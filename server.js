@@ -53,7 +53,7 @@ app.get('/', (req, res) => {
     </head>
     <body>
       <div class="container">
-        <h1> POC SUCCESS!</h1>
+        <h1> POC SUCCESS! sama Apridan</h1>
         <p>Node.js App Running on OpenShift</p>
         <div class="badge">OpenShift Virtualization</div>
         <div class="badge">Node.js ${process.version}</div>
