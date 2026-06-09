@@ -164,7 +164,7 @@ app.get('/', async (req, res) => {
     <div class="header">
       <div>
         <h1> Node.js Visitor Tracker</h1>
-        <p>Express + + Percona XtraDB Cluster</p>
+        <p>Node js + Express + Percona XtraDB Cluster</p>
       </div>
       <div class="badge">AUTO-LOGGING ACTIVE</div>
     </div>
