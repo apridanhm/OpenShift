@@ -1,90 +1,50 @@
+// app.js  Node.js VERSION (Express + mysql2)
 const express = require('express');
+const mysql = require('mysql2/promise');
 const app = express();
-const port = process.env.PORT || 8080;
 
-// Get hostname dari environment
-const hostname = process.env.HOSTNAME || 'localhost';
+const dbConfig = {
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 3306,
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASS || '',
+  database: process.env.DB_NAME || 'poc_db'
+};
 
-app.get('/', (req, res) => {
-  res.setHeader('Content-Type', 'text/html');
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title> POC OpenShift CI/CD</title>
-      <style>
-        body {
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          height: 100vh;
-          margin: 0;
-          color: white;
-        }
-        .container {
-          text-align: center;
-          background: rgba(255, 255, 255, 0.1);
-          padding: 40px;
-          border-radius: 20px;
-          backdrop-filter: blur(10px);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-        h1 { font-size: 3em; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
-        p { font-size: 1.2em; margin: 20px 0; }
-        .badge {
-          display: inline-block;
-          background: #00d4ff;
-          color: #000;
-          padding: 10px 20px;
-          border-radius: 25px;
-          margin: 10px;
-          font-weight: bold;
-        }
-        .info {
-          background: rgba(0, 0, 0, 0.2);
-          padding: 15px;
-          border-radius: 10px;
-          margin-top: 20px;
-          font-family: monospace;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1> POC SUCCESS! sama Apridan</h1>
-        <p>Node.js App Running on OpenShift</p>
-        <div class="badge">OpenShift Virtualization</div>
-        <div class="badge">Node.js ${process.version}</div>
-        <div class="info">
-          <strong>Hostname:</strong> ${hostname}<br>
-          <strong>Port:</strong> ${port}<br>
-          <strong>Environment:</strong> ${process.env.NODE_ENV || 'production'}<br>
-          <strong>Deployed:</strong> ${new Date().toLocaleString()}
-        </div>
-        <p style="margin-top: 30px; font-size: 0.9em; opacity: 0.8;">
-          Auto-deployed via Git CI/CD Pipeline 
-        </p>
-      </div>
-    </body>
-    </html>
-  `);
+app.get('/', async (req, res) => {
+  let connection;
+  try {
+    connection = await mysql.createConnection(dbConfig);
+    
+    // Auto-log visitor
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || '0.0.0.0';
+    const ua = req.headers['user-agent'] || 'Unknown';
+    await connection.execute(
+      'INSERT INTO visitors (ip_address, user_agent, request_uri, request_method) VALUES (?, ?, ?, ?)',
+      [ip, ua.substring(0,255), req.url, req.method]
+    );
+    
+    // Fetch visitors
+    const [rows] = await connection.execute('SELECT * FROM visitors ORDER BY created_at DESC LIMIT 50');
+    const [[{total}]] = await connection.execute('SELECT COUNT(*) as total FROM visitors');
+    
+    // Render HTML (simple version, same structure)
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(`
+      <!DOCTYPE html><html><head><title>Node.js Benchmark</title></head><body>
+      <h1> Node.js Visitor Tracker</h1>
+      <p>Total: ${total}</p>
+      <p>Pod: ${require('os').hostname()}</p>
+      <!-- Tambahin tabel visitor sama seperti lainnya biar fair -->
+      </body></html>
+    `);
+  } catch (err) {
+    console.error('DB Error:', err);
+    res.status(500).send('DB Error: ' + err.message);
+  } finally {
+    if (connection) await connection.end();
+  }
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    nodeVersion: process.version,
-    hostname: hostname
-  });
-});
-
-app.listen(port, () => {
-  console.log(` Node.js app listening on port ${port}`);
-  console.log(` Hostname: ${hostname}`);
-  console.log(` Environment: ${process.env.NODE_ENV || 'production'}`);
-});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => console.log(`Node server listening on port ${PORT}`));
