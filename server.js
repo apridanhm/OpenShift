@@ -47,6 +47,8 @@ app.get('/', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 8080;
+const HOST = '0.0.0.0';
+
 
 app.listen(PORT, HOST, () => {
   console.log(` Node.js server running on http://${HOST}:${PORT}`);
